@@ -1,0 +1,283 @@
+<html>
+
+<head>
+    <meta http-equiv="refresh" content="3600" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen-Sans, Ubuntu, Cantarell, Helvetica Neue, sans-serif;
+            background-color: black;
+            margin: 0;
+            padding: 0;
+        }
+
+        table,
+        td {
+            border: 1px solid black;
+            margin: 0;
+        }
+
+        .divBG {
+            /* font-size: 18pt; */
+            color: black;
+            text-shadow: 1px 1px white;
+            vertical-align: middle;
+            /* border: 1px solid red;*/
+        }
+
+        .weatherimage {
+            width: 98%;
+            height: 98%;
+            z-index: 0;
+            /* border: 1px solid blue */
+        }
+
+        .temp {
+            display: inline;
+            position: absolute;
+            z-index: 100;
+            text-align: center;
+            /* border: 1px solid green; */
+        }
+
+        .tdTop {
+            text-align: center;
+            overflow: hidden;
+        }
+    </style>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        var jsonresponse;
+
+        function formatDate(timestamp) {
+            var date = new Date(timestamp * 1000);
+            var hours = date.getHours();
+            var minutes = "0" + date.getMinutes();
+            var ampm = hours < 12 ? 'AM' : 'PM';
+            if (hours > 12) {
+                hours -= 12;
+            }
+            return hours + ':' + minutes.substr(-2) + ampm;
+        }
+
+        function getWeatherImage(pop, clouds, hassunset) {
+            var bgimage = '';
+            bgcolor = hassunset ? 'black' : '#55AAFF';
+            if (pop == 0 || pop == null) {
+                bgimage = hassunset ? './images/icons8-moon-and-stars-80.png' : './images/icons8-sun-80.png';
+            }
+            if (clouds > 0) {
+                bgimage = hassunset ? './images/icons8-night-80.png' : './images/icons8-partly-cloudy-day-80.png';
+            }
+            if (clouds > 50) {
+                bgimage = './images/icons8-clouds-80.png';
+            }
+            if (pop > 0) {
+                bgimage = './images/icons8-light-rain-80.png';
+            }
+            if (pop > 33) {
+                bgimage = './images/icons8-rain-80.png';
+            }
+            if (pop > 66) {
+                bgimage = './images/icons8-heavy-rain-80.png';
+            }
+            return bgimage;
+        }
+
+        function getWeatherHourly() {
+            axios.get('https://api.openweathermap.org/data/2.5/onecall', {
+                params: {
+                    lat: 33.537007,
+                    lon: -117.6660982,
+                    appid: '[myappid]',
+                    exclude: 'minutely,daily',
+                    units: 'imperial'
+                }
+            })
+                .then(function (response) {
+                    //console.log(response);
+                    jsonresponse = response.data;
+                    var col = 0;
+                    var top = new Array(7);
+                    var bot = new Array(7);
+                    var bgimages = new Array(7);
+                    var bgcolors = new Array(7);
+                    var temps = new Array(7);
+                    var sunset = new Date(jsonresponse.current.sunset * 1000);
+                    var sunrise = new Date(jsonresponse.current.sunrise * 1000);
+                    var now = Date.now();
+                    var hassunrise = (now > sunrise);
+                    var hassunset = (now > sunset);
+                    var bgcolor = hassunset ? 'black' : '#55AAFF';
+                    // var div = '<div class="divBG" style="background-color: %bgcolor%;">' +
+                    //     '   <img src="%bgimage%" style="width: 98%; height: 98%; z-index: 0; border: 1px solid blue" />' +
+                    //     '   <div style="display: block; position: relative; top: -100; z-index: 100; border: 1px solid green">%temp%</div>' +
+                    //     '</div>';
+
+                    if (hassunrise) {
+                        //top[col] = div.replace('%bgimage%', './images/icons8-sunrise-80.png').replace('%bgcolor%', '#FFD455').replace('%temp%', '');
+                        bgimages[col] = './images/icons8-sunrise-80.png';
+                        temps[col] = '';
+                        bgcolors[col] = '#FFD455';
+                        bot[col] = formatDate(jsonresponse.current.sunrise);
+                        col++;
+                    }
+
+                    var currentbgimage = getWeatherImage(jsonresponse.current.pop, jsonresponse.current.clouds, hassunset);
+                    //console.log('currentbgimage: ' + currentbgimage);
+                    //top[col] = div.replace('%bgcolor%', bgcolor).replace('%bgimage%', currentbgimage).replace('%temp%', Math.round(jsonresponse.current.temp) + '&deg;');
+                    bgimages[col] = currentbgimage;
+                    temps[col] = Math.round(jsonresponse.current.temp) + '&deg;';
+                    bgcolors[col] = bgcolor;
+                    bot[col] = 'Current';
+                    col++;
+
+                    //document.getElementById('lblSunset').innerHTML = formatDate(jsonresponse.current.sunset);
+
+                    for (var i = 2; i < jsonresponse.hourly.length && i <= 10; i += 2) {
+                        //console.log('i: ' + i);
+                        if (col < 7) {
+                            var hour = new Date(jsonresponse.hourly[i].dt * 1000);
+                            temps[col] = Math.round(jsonresponse.hourly[i].temp) + '&deg;';
+                            bot[col] = formatDate(jsonresponse.hourly[i].dt);
+
+                            if ((sunrise.getTime() - hour.getTime()) / 3600000 < 2 && !hassunrise) {
+                                //top[col] = div.replace('%bgimage%', './images/icons8-sunrise-80.png').replace('%temp%', '');
+                                bgimages[col] = './images/icons8-sunrise-80.png';
+                                temps[col] = '';
+                                bgcolors[col] = '#FFD455';
+                                bot[col] = formatDate(jsonresponse.current.sunrise);
+                                col++;
+                            }
+
+                            if (col < 7) {
+                                var bgimage = getWeatherImage(jsonresponse.hourly[i].pop, jsonresponse.hourly[i].clouds, hassunset);
+                                //top[col] = div.replace('%bgcolor%', bgcolor).replace('%bgimage%', bgimage).replace('%temp%', Math.round(jsonresponse.hourly[i].temp) + '&deg;');
+                                bgimages[col] = bgimage;
+                                temps[col] = Math.round(jsonresponse.hourly[i].temp) + '&deg;';
+                                bgcolors[col] = bgcolor;
+                                bot[col] = formatDate(jsonresponse.hourly[i].dt);
+                                col++;
+                            }
+
+                            //console.log('sunset ' + sunset.toTimeString() + ' hour ' + hour.toTimeString() + ' diff: ' + (sunset.getTime() - hour.getTime()) / 3600000);
+                            if ((sunset.getTime() - hour.getTime()) / 3600000 < 2 && !hassunset) {
+                                //top[col] = div.replace('%bgimage%', './images/icons8-sunset-80.png').replace('%bgcolor%', '#FFD455').replace('%temp%', '');
+                                bgimages[col] = './images/icons8-sunset-80.png';
+                                temps[col] = '';
+                                bgcolors[col] = '#FFD455';
+                                bot[col] = formatDate(jsonresponse.current.sunset);
+                                col++;
+                                hassunset = true;
+                                bgcolor = 'black';
+                            }
+                        }
+                    }
+
+                    for (var i = 0; i < 7; i++) {
+                        //document.getElementById('tdTop' + i).innerHTML = top[i];
+                        document.getElementById('tdTop' + i).style.backgroundColor = bgcolors[i];
+                        document.getElementById('imgW' + i).src = bgimages[i];
+                        document.getElementById('divTemp' + i).innerHTML = temps[i];
+                        document.getElementById('tdBot' + i).innerHTML = bot[i];
+                    }
+                })
+        }
+
+        function fitScreen(container) {
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            var e = document.getElementById(container);
+            var tx = Math.round(w / 7) - 20;
+            var tty = Math.round(h * .8) - 30;
+            var tby = Math.round(h * .2) - 30;
+            var fontsize = h / 5;
+            var tempTop = -(h / 2 - 10);
+            e.style.width = w + 'px';
+            e.style.height = h + 'px';
+            console.log('w: ' + w);
+            for (var i = 0; i < 7; i++) {
+                var tdTop = document.getElementById('tdTop' + i);
+                var tdBot = document.getElementById('tdBot' + i);
+                var divTemp = document.getElementById('divTemp' + i);
+                var fx = Math.round(i * (w / 7) + (w / 7 / 2) - tx / 2);
+                console.log('fx: ' + fx);
+                var fy = tty / 2;
+
+                tdTop.style.width = tx + 'px';
+                tdTop.style.height = tty + 'px';
+                tdBot.style.height = tby + 'px';
+                divTemp.style.fontSize = fontsize + 'px';
+                divTemp.style.top = tempTop + 'px';
+                divTemp.style.left = fx + 'px';
+                divTemp.style.top = fy + 'px';
+                divTemp.style.width = tx + 'px';
+                //console.log(tdTop.id + ': ' + tty);
+            }
+        }
+
+        function refreshPage() {
+            window.location.reload();
+            setTimeout(refreshPage(), 3600000);
+        }
+    </script>
+</head>
+
+<body onload="getWeatherHourly(); fitScreen('tblMain'); " onresize="fitScreen('tblMain');">
+    <table cellspacing="0" cellpadding="0" id="tblMain">
+        <tr>
+            <td class="tdTop" id="tdTop0">
+                <div class="divBG" id="divTop0">
+                    <img id="imgW0" class="weatherimage" />
+                    <div id="divTemp0" class="temp"></div>
+                </div>
+            </td>
+            <td style="text-align: center" id="tdTop1">
+                <div class="divBG" id="divTop1">
+                    <img id="imgW1" class="weatherimage" />
+                    <div id="divTemp1" class="temp"></div>
+                </div>
+            </td>
+            <td style="text-align: center" id="tdTop2">
+                <div class="divBG" id="divTop2">
+                    <img id="imgW2" class="weatherimage" />
+                    <div id="divTemp2" class="temp"></div>
+                </div>
+            </td>
+            <td style="text-align: center" id="tdTop3">
+                <div class="divBG" id="divTop3">
+                    <img id="imgW3" class="weatherimage" />
+                    <div id="divTemp3" class="temp"></div>
+                </div>
+            </td>
+            <td style="text-align: center" id="tdTop4">
+                <div class="divBG" id="divTop4">
+                    <img id="imgW4" class="weatherimage" />
+                    <div id="divTemp4" class="temp"></div>
+                </div>
+            </td>
+            <td style="text-align: center" id="tdTop5">
+                <div class="divBG" id="divTop5">
+                    <img id="imgW5" class="weatherimage" />
+                    <div id="divTemp5" class="temp"></div>
+                </div>
+            </td>
+            <td style="text-align: center" id="tdTop6">
+                <div class="divBG" id="divTop6">
+                    <img id="imgW6" class="weatherimage" />
+                    <div id="divTemp6" class="temp"></div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center; background-color: white;" id="tdBot0"></td>
+            <td style="text-align: center; background-color: white;" id="tdBot1"></td>
+            <td style="text-align: center; background-color: white;" id="tdBot2"></td>
+            <td style="text-align: center; background-color: white;" id="tdBot3"></td>
+            <td style="text-align: center; background-color: white;" id="tdBot4"></td>
+            <td style="text-align: center; background-color: white;" id="tdBot5"></td>
+            <td style="text-align: center; background-color: white;" id="tdBot6"></td>
+        </tr>
+    </table>
+</body>
+
+</html>
