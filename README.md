@@ -10,6 +10,8 @@ appid: '123456',
 
 Just copy the files to HA's www folder (I use weather_widget) and use an iframe card. Aspect ratio of 30% seems to work well:
 
+<pre>
   - type: iframe
     url: /local/weather_widget/weather.html
     aspect_ratio: 30%
+</pre>
